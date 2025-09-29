@@ -302,3 +302,5 @@ Se todos os testes passarem sem erros, a aplicação está funcionando corretame
 ---
 
 **Desenvolvido como parte de exercício prático de API REST com autenticação JWT**
+
+*Usado DeepSeek e BlackBox*
