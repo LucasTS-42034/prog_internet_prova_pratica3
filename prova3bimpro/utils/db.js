@@ -1,26 +1,20 @@
-const jwt = require('jsonwebtoken');
+const fs = require('fs').promises;
+const path = require('path');
 
-class JWTUtils {
-    static generateToken(payload) {
-        return jwt.sign(payload, process.env.JWT_SECRET, {
-            expiresIn: '1h'
-        });
+const DATA_FILE = path.join(__dirname, '../db.json');
+
+const readData = async () => {
+    try {
+        const data = await fs.readFile(DATA_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        // Se o arquivo não existe, retorna estrutura vazia
+        return { users: [] };
     }
+};
 
-    static verifyToken(token) {
-        try {
-            return jwt.verify(token, process.env.JWT_SECRET);
-        } catch (error) {
-            throw new Error('Token inválido');
-        }
-    }
+const writeData = async (data) => {
+    await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+};
 
-    static extractToken(req) {
-        const authHeader = req.headers.authorization;
-        if (!authHeader) return null;
-        
-        return authHeader.split(' ')[1];
-    }
-}
-
-module.exports = JWTUtils;
+module.exports = { readData, writeData };

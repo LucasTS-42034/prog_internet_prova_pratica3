@@ -1,39 +1,18 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const JWT_SECRET = 'segredo';
+const express = require('express');
+const authenticateToken = require('../middleware/auth');
+const { 
+    getAllUsers, 
+    getUserById, 
+    updateUser, 
+    deleteUser 
+} = require('../controllers/usersController');
 
-const generateToken = (userId) => {
-    return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '24h' });
-};
+const router = express.Router();
 
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+// Todas as rotas protegidas por JWT
+router.get('/', authenticateToken, getAllUsers);
+router.get('/:id', authenticateToken, getUserById);
+router.put('/:id', authenticateToken, updateUser);
+router.delete('/:id', authenticateToken, deleteUser);
 
-    if (!token) {
-        return res.status(401).json({ error: 'Token required' });
-    }
-
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: 'Invalid token' });
-        }
-        req.user = user;
-        next();
-    });
-};
-
-const hashPassword = async (password) => {
-    return await bcrypt.hash(password, 10);
-};
-
-const comparePassword = async (password, hashedPassword) => {
-    return await bcrypt.compare(password, hashedPassword);
-};
-
-module.exports = {
-    generateToken,
-    authenticateToken,
-    hashPassword,
-    comparePassword
-};
+module.exports = router;

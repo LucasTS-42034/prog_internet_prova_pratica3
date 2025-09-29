@@ -1,61 +1,89 @@
-const express = require('express');
-const router = express.Router();
-const fs = require('fs');
-const { v4: uuidv4 } = require('uuid'); 
+const { readData, writeData } = require('../utils/db');
 
-const dbPath = './db.json';
-
-const lerDados = () => {
-  const dados = fs.readFileSync(dbPath, 'utf-8');
-  return JSON.parse(dados);
+// Listar todos os usuários
+const getAllUsers = async (req, res) => {
+    try {
+        const data = await readData();
+        
+        // Remove senhas dos resultados
+        const usersWithoutPasswords = data.users.map(user => {
+            const { senha, ...userWithoutPassword } = user;
+            return userWithoutPassword;
+        });
+        
+        res.json(usersWithoutPasswords);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 };
 
-const escreverDados = (dados) => {
-  fs.writeFileSync(dbPath, JSON.stringify(dados, null, 2));
+// Buscar usuário por ID
+const getUserById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const data = await readData();
+        const user = data.users.find(user => user.id === id);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+
+        // Remove senha do resultado
+        const { senha, ...userWithoutPassword } = user;
+        res.json(userWithoutPassword);
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 };
 
-router.get('/', (req, res) => {
-  const dados = lerDados();
-  res.json(dados.usuarios);
-});
+// Atualizar usuário
+const updateUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, email } = req.body;
+        
+        const data = await readData();
+        const userIndex = data.users.findIndex(user => user.id === id);
+        
+        if (userIndex === -1) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
 
-router.post('/', (req, res) => {
-  const dados = lerDados();
-  const novoUsuario = {
-    id: uuidv4(),
-    ...req.body
-  };
-  dados.usuarios.push(novoUsuario);
-  escreverDados(dados);
-  res.status(201).json({ mensagem: "Úsuario criado com sucesso!", usuario: novoUsuario });
-});
+        // Atualiza apenas nome e email
+        if (nome) data.users[userIndex].nome = nome;
+        if (email) data.users[userIndex].email = email;
 
-router.put('/:id', (req, res) => {
-  const { id } = req.params;
-  const dados = lerDados();
-  const indexUsuario = dados.usuarios.findIndex(p => p.id === id);
+        await writeData(data);
 
-  if (indexUsuario === -1) {
-    return res.status(404).json({ mensagem: "Usuario não encontrado." });
-  }
+        // Remove senha do resultado
+        const { senha, ...updatedUser } = data.users[userIndex];
+        res.json(updatedUser);
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
-  dados.usuarios[indexUsuario] = { ...dados.usuarios[indexUsuario], ...req.body };
-  escreverDados(dados);
-  res.json({ mensagem: "Úsuario atualizado com sucesso!", usuario: dados.usuarios[indexUsuario] });
-});
+// Deletar usuário
+const deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const data = await readData();
+        
+        const userIndex = data.users.findIndex(user => user.id === id);
+        if (userIndex === -1) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
 
-router.delete('/:id', (req, res) => {
-  const { id } = req.params;
-  const dados = lerDados();
-  const novosUsuarios = dados.usuarios.filter(p => p.id !== id);
+        data.users.splice(userIndex, 1);
+        await writeData(data);
+        
+        res.status(204).send();
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
-  if (dados.usuarios.length === novosUsuarios.length) {
-      return res.status(404).json({ mensagem: "Úsuario não encontrado." });
-  }
-
-  dados.usuarios = novosUsuarios;
-  escreverDados(dados);
-  res.json({ mensagem: "Úsuario deletado com sucesso." });
-});
-
-module.exports = router;
+module.exports = { getAllUsers, getUserById, updateUser, deleteUser };
